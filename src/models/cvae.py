@@ -213,9 +213,10 @@ class LitCVAE(pl.LightningModule):
         brightness = self._to_tensor(attrs["dco_brightness"])
         ritchness = self._to_tensor(attrs["dco_richness"])
         oddenergy = self._to_tensor(attrs["dco_oddenergy"])
+        zcr = self._to_tensor(attrs["dco_zcr"])
 
         # 3つの特徴量を結合
-        attrs = torch.stack([brightness, ritchness, oddenergy], dim=1)
+        attrs = torch.stack([brightness, ritchness, oddenergy, zcr], dim=1)
         return x, attrs
 
     def configure_optimizers(self):  # Optimizerと学習率(lr)設定
@@ -238,13 +239,14 @@ class Base(nn.Module):
         brightness = attrs[:, 0]
         ritchness = attrs[:, 1]
         oddenergy = attrs[:, 2]
+        zcr = attrs[:, 3]
 
         brightness_y = brightness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
         ritchness_y = ritchness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
         oddenergy_y = oddenergy.view(-1, 1, 1).expand(-1, 1, x.shape[2])
-        # zcr_y = zcr.view(-1, 1, 1).expand(-1, 1, x.shape[2])
-        # x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y, zcr_y], dim=1)
-        x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y], dim=1)
+        zcr_y = zcr.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y, zcr_y], dim=1)
+        # x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y], dim=1)
 
         return x
 
@@ -260,12 +262,13 @@ class Base(nn.Module):
         brightness = attrs[:, 0]  # (batch_size, 1)
         ritchness = attrs[:, 1]
         oddenergy = attrs[:, 2]
+        zcr = attrs[:, 3]
 
         # (batch_size, L)
         brightness = brightness.view(-1, 1).expand(x.shape[0], 1)
         ritchness = ritchness.view(-1, 1).expand(x.shape[0], 1)
         oddenergy = oddenergy.view(-1, 1).expand(x.shape[0], 1)
-
+        zcr = zcr.view(-1, 1).expand(x.shape[0], 1)
         """
         # (batch_size, L)
         brightness = brightness.view(-1, 1).unsqueeze(1).expand(x.shape[0], 1, -1)
@@ -274,7 +277,7 @@ class Base(nn.Module):
         """
 
         # (batch_size, 1, L)
-        x = torch.cat([x, brightness, ritchness, oddenergy], dim=1)
+        x = torch.cat([x, brightness, ritchness, oddenergy, zcr], dim=1)
 
         return x
 
@@ -329,8 +332,8 @@ class Encoder(Base):
                 nn.Linear(in_features=lin_layer_dim[1], out_features=lin_layer_dim[2]),
                 nn.LeakyReLU(),
             )
-            self.enc_mean = nn.Linear(lin_layer_dim[2] + 3, lin_layer_dim[3])
-            self.enc_scale = nn.Linear(lin_layer_dim[2] + 3, lin_layer_dim[3])
+            self.enc_mean = nn.Linear(lin_layer_dim[2] + 4, lin_layer_dim[3])
+            self.enc_scale = nn.Linear(lin_layer_dim[2] + 4, lin_layer_dim[3])
 
     def forward(self, x, attrs):
         for i, layer in enumerate(self.conv_layers):
@@ -361,7 +364,7 @@ class Decoder(Base):
 
         self.channels = channels
         self.dec_lin = nn.Sequential(
-            nn.Linear(in_features=lin_layer_dim[0] + 3, out_features=lin_layer_dim[1]),
+            nn.Linear(in_features=lin_layer_dim[0] + 4, out_features=lin_layer_dim[1]),
             nn.LeakyReLU(),
             nn.Linear(in_features=lin_layer_dim[1], out_features=lin_layer_dim[2]),
             nn.LeakyReLU(),
