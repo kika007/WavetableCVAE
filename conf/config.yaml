@@ -66,15 +66,16 @@ logger:
   project: 'WavetableCVAE'
   log_model: True # upload lightning ckpts
   prefix: "" # a string to put at the beginning of metric keys
-  # entity: "" # set to name of your wandb team
+  #entity: "" # set to name of your wandb team
   group: ""
   tags: []
   job_type: ""
 
+
 trainer:
   _target_: pytorch_lightning.Trainer
-  max_epochs: 1
-  enable_checkpointing: True
+  max_epochs: 1000
+  enable_checkpointing: Truewand
   auto_lr_find: True
   auto_scale_batch_size: True
 
