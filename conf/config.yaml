@@ -46,7 +46,7 @@ model:
   sample_rate: 44100
   lr: 1e-4
   duplicate_num: 6
-  warmup: 30000 # beta
+  warmup: 1000 # beta
 
   min_kl: 1e-4
   max_kl: 1e-1
@@ -75,7 +75,7 @@ logger:
 trainer:
   _target_: pytorch_lightning.Trainer
   max_epochs: 1000
-  enable_checkpointing: Truewand
+  enable_checkpointing: True
   auto_lr_find: True
   auto_scale_batch_size: True
 
