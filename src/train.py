@@ -1,13 +1,12 @@
 import subprocess
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Union
 
 import hydra
 import pyrootutils
 import pytorch_lightning as pl
 import torch
 import wandb
-from omegaconf import DictConfig
+from omegaconf import DictConfig, ListConfig, OmegaConf
 from pytorch_lightning import Trainer
 
 root = pyrootutils.setup_root(
@@ -27,7 +26,7 @@ class TrainerWT(pl.LightningModule):
     def __init__(self, cfg: DictConfig):
         super().__init__()
         self.cfg = cfg
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        device, accelerator, devices = self._resolve_device()
         torch_fix_seed(cfg.seed)
 
         self.dm: pl.LightningDataModule = hydra.utils.instantiate(
@@ -38,29 +37,52 @@ class TrainerWT(pl.LightningModule):
         print("Model init...")
         self.model: pl.LightningModule = hydra.utils.instantiate(cfg.model)
         print("Model init done.")
-        logger: List[pl.LightningLoggerBase] = hydra.utils.instantiate(cfg.logger)
-        callbacks: pl.callbacks.Callback = hydra.utils.instantiate(cfg.callbacks)
+        logger = self._instantiate_optional(cfg.get("logger"))
+        callbacks = self._instantiate_callbacks(cfg.get("callbacks"))
 
         print(f"Device: {device}")
-        if device == "cuda":
-            accelerator = "gpu"
-            devices = torch.cuda.device_count()
-        elif device == "cpu":
-            accelerator = "cpu"
-            devices = None
-        elif device == "mps":
-            accelerator = "mps"
-            devices = torch.cuda.device_count()
-        else:
-            raise ValueError("device must be 'cuda' or 'cpu'")
 
         self.trainer: Trainer = hydra.utils.instantiate(
             cfg.trainer,
-            callbacks=[callbacks],  # EarlyStopping(monitor="val_loss", mode="min")],
+            callbacks=callbacks,
             accelerator=accelerator,
             devices=devices,
             logger=logger,
         )
+
+    @staticmethod
+    def _instantiate_optional(
+        config: Optional[Union[DictConfig, ListConfig]]
+    ) -> Optional[Union[Any, List[Any]]]:
+        if config is None:
+            return None
+        if OmegaConf.is_list(config):
+            return [hydra.utils.instantiate(item) for item in config]
+        return hydra.utils.instantiate(config)
+
+    @staticmethod
+    def _instantiate_callbacks(config: Optional[Union[DictConfig, ListConfig]]) -> Optional[List[pl.Callback]]:
+        if config is None:
+            return None
+        if OmegaConf.is_list(config):
+            return [hydra.utils.instantiate(item) for item in config]
+        return [hydra.utils.instantiate(config)]
+
+    @staticmethod
+    def _resolve_device() -> Tuple[str, str, Union[int, str]]:
+        if torch.cuda.is_available():
+            device = "cuda"
+            accelerator = "cuda"
+            devices = max(1, torch.cuda.device_count())
+        elif torch.backends.mps.is_available():
+            device = "mps"
+            accelerator = "mps"
+            devices = 1
+        else:
+            device = "cpu"
+            accelerator = "cpu"
+            devices = 1
+        return device, accelerator, devices
 
     def train(self, resume):
 
@@ -72,7 +94,7 @@ class TrainerWT(pl.LightningModule):
         else:
             resume_ckpt = None
 
-        self.trainer.fit(self.model, self.dm, ckpt_path=resume_ckpt)
+        self.trainer.fit(self.model, datamodule=self.dm, ckpt_path=resume_ckpt)
 
     def save_model(self, comment=""):
         save_path = root / "torchscript"
