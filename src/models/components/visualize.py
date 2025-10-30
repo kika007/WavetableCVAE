@@ -75,10 +75,34 @@ class EvalModelInit:
             self.model.eval()
             self.model.to(device)
             wav = wav.to(device)
-            # process speed
-            # start = time.perf_counter()
-            wavetable, _, _, _, _ = self.model(wav, attrs, latent_op)
-            # print(time.perf_counter() - start)
+
+            if isinstance(attrs, dict):
+                keys = ["dco_brightness", "dco_richness", "dco_oddenergy", "hardness"]
+                values = []
+                for key in keys:
+                    if key not in attrs:
+                        raise KeyError(f"Missing attribute '{key}' in attrs dictionary")
+                    val = attrs[key]
+                    if isinstance(val, torch.Tensor):
+                        val = val.detach().cpu().item()
+                    values.append(float(val))
+                attrs = torch.tensor([values], dtype=torch.float32, device=device)
+
+            if isinstance(attrs, torch.Tensor):
+                attrs = attrs.to(device)
+
+            results = self.model(wav, attrs, latent_op)
+
+            wavetable = results
+            if isinstance(results, tuple):
+                wavetable = None
+                for tensor in reversed(results):
+                    if isinstance(tensor, torch.Tensor) and tensor.shape == wav.shape:
+                        wavetable = tensor
+                        break
+                if wavetable is None:
+                    wavetable = results[0]
+
             self.model.train()
         return wavetable
 
