@@ -123,6 +123,12 @@ class LitCVAE(pl.LightningModule):
         return self(x)
 
     def get_beta_kl_monotonic(self, epoch, warmup, min_beta, max_beta):
+        
+        """
+        Exponential (log-space) warm-up of β during the first `warmup` epochs.
+        After the warm-up phase, β stays constant at `max_beta`.
+        """
+        
         if epoch > warmup:
             return max_beta
         t = epoch / warmup
@@ -133,6 +139,13 @@ class LitCVAE(pl.LightningModule):
 
     # https://github.com/acids-ircam/RAVE/blob/ff10b4f9843d530f60b6f108a9f0ff874a1a20b6/rave/core.py#L100
     def get_beta_kl(self, step, warmup, min_beta, max_beta):
+        
+        """
+        Same exponential warm-up as above, but controlled by training steps
+        instead of epochs. This gives smoother progression when there are many
+        batches per epoch or variable epoch lengths.
+        """
+        
         if step > warmup:
             return max_beta
         t = step / warmup
@@ -142,9 +155,30 @@ class LitCVAE(pl.LightningModule):
         return np.exp(beta_log)
 
     def get_beta_kl_cyclic(self, step, cycle_size, min_beta, max_beta):
+        
+        """
+        Cyclical warm-up schedule for β.
+        Each cycle lasts `cycle_size` steps:
+         - During the first half of the cycle, β grows from min_beta to max_beta.
+         - During the second half, β remains at max_beta.
+        After each cycle, the schedule resets to min_beta again.
+        """       
+        
         return self.get_beta_kl(step % cycle_size, cycle_size // 2, min_beta, max_beta)
 
     def get_beta_kl_cyclic_annealed(self, step, cycle_size, warmup, min_beta, max_beta):
+        
+        """
+        Combined schedule:
+          1. Globally increases the minimum β value (annealing).
+          2. Applies a local cyclical warm-up within each cycle.
+    
+        This means:
+          - Early cycles start with very small β (focus on reconstruction).
+          - As training continues, the lower bound rises, so later cycles
+            have stronger regularization overall.
+        """
+        
         min_beta = self.get_beta_kl(step, warmup, min_beta, max_beta)
         return self.get_beta_kl_cyclic(step, cycle_size, min_beta, max_beta)
 
@@ -256,9 +290,10 @@ class Base(nn.Module):
         Args:
             x (torch.Tensor): Input tensor.
             attrs (dict): Attributes.
-        """
+        
         print("attrs in lin cond", attrs.shape)
         print("x in lin cond", x.shape)
+        """
         brightness = attrs[:, 0]  # (batch_size, 1)
         ritchness = attrs[:, 1]
         oddenergy = attrs[:, 2]
