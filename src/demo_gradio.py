@@ -93,27 +93,47 @@ def wavetable_to_tone(
     wavetable: np.ndarray,
     duration_sec: float = TONE_DURATION_SEC,
     sample_rate: int = SAMPLE_RATE,
+    frequency_hz: float = 440.0,   # Target output frequency in Hz
 ) -> np.ndarray:
-    wavetable = wavetable.flatten()
+    # Flatten wavetable and ensure float32 type
+    wavetable = wavetable.flatten().astype(np.float32)
     num_samples = int(duration_sec * sample_rate)
-    
 
+    # If wavetable is empty, return silence
     if len(wavetable) == 0:
         return np.zeros(num_samples, dtype=np.float32)
 
-    # how many times to repeat the wavetable to reach desired duration
-    reps = int(np.ceil(num_samples / len(wavetable)))
-    tiled = np.tile(wavetable, reps)[:num_samples]
+    table_len = len(wavetable)
 
-    # fade in/out to avoid clicks
-    fade_len = int(0.01 * sample_rate)  # 10 ms
-    if fade_len > 0 and fade_len * 2 < len(tiled):
+    # Phase increment: how many wavetable samples we advance per output sample
+    # This determines the resulting pitch
+    phase_increment = frequency_hz * table_len / sample_rate
+
+    # Precompute all phase values for speed (one per output sample)
+    phase = np.arange(num_samples, dtype=np.float64) * phase_increment
+
+    # Integer part of phase (base index in wavetable)
+    idx0 = np.floor(phase).astype(np.int64) % table_len
+
+    # Next index in the wavetable (wrap-around)
+    idx1 = (idx0 + 1) % table_len
+
+    # Fractional part for linear interpolation
+    frac = phase - np.floor(phase)
+
+    # Linear interpolation between wavetable[idx0] and wavetable[idx1]
+    tone = (1.0 - frac) * wavetable[idx0] + frac * wavetable[idx1]
+
+    # Apply fade-in and fade-out (10 ms each) to avoid clicks
+    fade_len = int(0.01 * sample_rate)
+    if fade_len > 0 and fade_len * 2 < len(tone):
         fade_in = np.linspace(0.0, 1.0, fade_len)
         fade_out = np.linspace(1.0, 0.0, fade_len)
-        tiled[:fade_len] *= fade_in
-        tiled[-fade_len:] *= fade_out
+        tone[:fade_len] *= fade_in
+        tone[-fade_len:] *= fade_out
 
-    return tiled.astype(np.float32)
+    return tone.astype(np.float32)
+
 
 
 # ---------------------------------------------------------------------
@@ -145,7 +165,12 @@ def infer(
     
     
     # Wavetable -> tone
-    output_waveform = wavetable_to_tone(wavetable_np, duration_sec=TONE_DURATION_SEC, sample_rate=SAMPLE_RATE)
+    output_waveform = wavetable_to_tone(
+    wavetable_np,
+    duration_sec=TONE_DURATION_SEC,
+    sample_rate=SAMPLE_RATE,
+    frequency_hz=440.0,  # Fixed output pitch
+)
 
     # Plot
     fig, ax = plt.subplots(figsize=(8, 3))
