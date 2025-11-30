@@ -320,12 +320,12 @@ class Base(nn.Module):
 class Encoder(Base):
     def __init__(
         self,
-        cond_layer: list,
-        cond_num: int = 3,
-        channels: list = [64, 128, 256, 512],
-        kernel_size: list = [9, 9, 9, 9],
-        stride: list = [1, 1, 2, 2],
-        lin_layer_dim: list = [1024, 512, 256],
+        cond_layer: list,  
+        cond_num: int,     
+        channels: list,
+        kernel_size: list,
+        stride: list,
+        lin_layer_dim: list,
     ):
         super().__init__()
 
@@ -367,15 +367,15 @@ class Encoder(Base):
                 nn.Linear(in_features=lin_layer_dim[1], out_features=lin_layer_dim[2]),
                 nn.LeakyReLU(),
             )
-            self.enc_mean = nn.Linear(lin_layer_dim[2] + 4, lin_layer_dim[3])
-            self.enc_scale = nn.Linear(lin_layer_dim[2] + 4, lin_layer_dim[3])
+            self.enc_mean = nn.Linear(lin_layer_dim[2] + cond_num, lin_layer_dim[3])
+            self.enc_scale = nn.Linear(lin_layer_dim[2] + cond_num, lin_layer_dim[3])
 
     def forward(self, x, attrs):
         for i, layer in enumerate(self.conv_layers):
             if self.cond_layer[i]:
                 x = self._conv_conditioning(x, attrs)
             x = layer(x)
-        # この処理で良いのか？
+        # Is flatten the best option?
         x = self.flatten(x)
         x = self.lin_layer(x)
         x = self._lin_conditioning(x, attrs)
@@ -389,23 +389,23 @@ class Decoder(Base):
     def __init__(
         self,
         cond_layer: list,
-        cond_num: int = 4,
-        channels: list = [256, 128, 64, 32],
-        kernel_size: list = [8, 8, 8, 9],
-        stride: list = [2, 1, 2, 1],
-        lin_layer_dim: list = [256, 512, 1024],
+        cond_num: int,
+        channels: list,
+        kernel_size: list,
+        stride: list,
+        lin_layer_dim: list,
     ):
         super().__init__()
 
         self.channels = channels
         self.dec_lin = nn.Sequential(
-            nn.Linear(in_features=lin_layer_dim[0] + 4, out_features=lin_layer_dim[1]),
+            nn.Linear(in_features=lin_layer_dim[0] + cond_num, out_features=lin_layer_dim[1]),
             nn.LeakyReLU(),
             nn.Linear(in_features=lin_layer_dim[1], out_features=lin_layer_dim[2]),
             nn.LeakyReLU(),
             nn.Linear(in_features=lin_layer_dim[2], out_features=lin_layer_dim[3]),
             nn.LeakyReLU(),
-        ).to(device)
+        )
 
         self.cond_layer = cond_layer
         self.deconv_layers = nn.ModuleList()
