@@ -75,14 +75,22 @@ def _load_attrs(sample_name: str) -> Dict[str, float]:
     return attrs
 
 
+def _normalize_hardness(value: float) -> float:
+    """Convert hardness from 0-100 scale to 0-1 (clamped)."""
+    normalized = float(value) / 100.0
+    return float(np.clip(normalized, 0.0, 1.0))
+
+
 def _default_attr_values(sample_name: str) -> Tuple[float, float, float, float]:
     attrs = _load_attrs(sample_name)
-    return (
+    values = (
         float(attrs.get("dco_brightness", 0.5)),
         float(attrs.get("dco_richness", 0.5)),
         float(attrs.get("dco_oddenergy", 0.5)),
-        float(attrs.get("hardness", 50.0)),
+        _normalize_hardness(attrs.get("hardness", 50.0)),
     )
+    # limit displayed precision to two decimals for cleaner UI
+    return tuple(round(v, 2) for v in values)
 
 
 # ---------------------------------------------------------------------
@@ -149,14 +157,17 @@ def infer(
 ) -> Tuple[Tuple[int, np.ndarray], plt.Figure]:
     # input wavetable
     waveform, _ = _load_wave(sample_name)
-    batched_wav = waveform.unsqueeze(0)  # pridáme batch dim
+    batched_wav = waveform.unsqueeze(0)  # batch dim
+
+    # Hardness slider is normalized to 0-1; scale back to model's 0-100 expectation
+    hardness_for_model = float(np.clip(hardness, 0.0, 1.0)) * 100.0
 
     # Attributs
     attrs = {
         "dco_brightness": float(dco_brightness),
         "dco_richness": float(dco_richness),
         "dco_oddenergy": float(dco_oddenergy),
-        "hardness": float(hardness),
+        "hardness": hardness_for_model,
     }
 
     # New wavetable generation
@@ -199,7 +210,7 @@ def update_attributes(sample_name: str) -> Tuple[float, float, float, float]:
 def build_interface() -> gr.Blocks:
     sample_names = _list_predict_waves()
     default_sample = sample_names[0] if sample_names else ""
-    default_attrs = _default_attr_values(default_sample) if default_sample else (0.5, 0.5, 0.5, 50.0)
+    default_attrs = _default_attr_values(default_sample) if default_sample else (0.5, 0.5, 0.5, 0.5)
 
     with gr.Blocks(title="Wavetable CVAE Demo") as demo:
         gr.Markdown(
@@ -213,10 +224,10 @@ def build_interface() -> gr.Blocks:
                 value=default_sample,
                 label="Input wavetable",
             )
-            brightness_slider = gr.Slider(0.0, 1.0, value=default_attrs[0], step=0.01, label="DCO Brightness")
-            richness_slider = gr.Slider(0.0, 1.0, value=default_attrs[1], step=0.01, label="DCO Richness")
-            oddenergy_slider = gr.Slider(0.0, 1.0, value=default_attrs[2], step=0.01, label="DCO Odd Energy")
-            hardness_slider = gr.Slider(0.0, 100.0, value=default_attrs[3], step=0.1, label="Hardness")
+            brightness_slider = gr.Slider(0.0, 1.0, value=default_attrs[0], step=0.01, label="Brightness")
+            richness_slider = gr.Slider(0.0, 1.0, value=default_attrs[1], step=0.01, label="Richness")
+            oddenergy_slider = gr.Slider(0.0, 1.0, value=default_attrs[2], step=0.01, label="Warmth")
+            hardness_slider = gr.Slider(0.0, 1.0, value=default_attrs[3], step=0.01, label="Hardness")
 
         generate_button = gr.Button("Generate")
         audio_output = gr.Audio(label="Generated Audio", interactive=False)
@@ -251,4 +262,3 @@ demo = build_interface()
 
 if __name__ == "__main__":
     demo.launch()
-
