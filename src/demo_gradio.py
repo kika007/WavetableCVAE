@@ -83,14 +83,12 @@ def _normalize_hardness(value: float) -> float:
 
 def _default_attr_values(sample_name: str) -> Tuple[float, float, float, float]:
     attrs = _load_attrs(sample_name)
-    values = (
+    return (
         float(attrs.get("dco_brightness", 0.5)),
         float(attrs.get("dco_richness", 0.5)),
         float(attrs.get("dco_oddenergy", 0.5)),
         _normalize_hardness(attrs.get("hardness", 50.0)),
     )
-    # limit displayed precision to two decimals for cleaner UI
-    return tuple(round(v, 2) for v in values)
 
 
 # ---------------------------------------------------------------------
@@ -159,7 +157,7 @@ def infer(
     waveform, _ = _load_wave(sample_name)
     batched_wav = waveform.unsqueeze(0)  # batch dim
 
-    # Hardness slider is normalized to 0-1; scale back to model's 0-100 expectation
+
     hardness_for_model = float(np.clip(hardness, 0.0, 1.0)) * 100.0
 
     # Attributs
@@ -261,4 +259,4 @@ evaluator, _ = load_model()
 demo = build_interface()
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(share=True)
