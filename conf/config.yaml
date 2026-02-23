@@ -51,6 +51,7 @@ model:
   min_kl: 1e-4
   max_kl: 1e-1
   wave_loss_coef: null
+  boundary_loss_coef: 10
   cycle_num: 8
 
 datamodule:
@@ -89,5 +90,5 @@ resume: null #"ckpt/2023-04-23-18:18:10.452469-LitCVAE-30000.ckpt"
 # "/workspace/My-reserch-project/WavetableCVAE/rp6j1uld/checkpoints/epoch=1999-step=198000.ckpt"
 save: True
 seed: 42
-debug_mode: False
+debug_mode: True
 comment: null

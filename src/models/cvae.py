@@ -42,6 +42,7 @@ class LitCVAE(pl.LightningModule):
         min_kl: float = 1e-4,
         max_kl: float = 5e-1,
         wave_loss_coef: float = None,
+        boundary_loss_coef: float = None,
         enc_lin_layer_dim: list = None,
         dec_lin_layer_dim: list = None,
         cycle_num: int = 1,
@@ -61,6 +62,7 @@ class LitCVAE(pl.LightningModule):
         self.cycle_size = self.warmup // cycle_num
 
         self.wave_loss_coef = wave_loss_coef
+        self.boundary_loss_coef = boundary_loss_coef
 
         self.encoder = Encoder(
             cond_layer=enc_cond_layer,
@@ -187,6 +189,9 @@ class LitCVAE(pl.LightningModule):
         z, kl, output = self.forward(x, attrs)
         assert x.shape == output.shape, f"in: {x.shape} != out: {output.shape}"
 
+        # keep the base wavetable before duplication for boundary regularization
+        base_output = output
+
         x = x.repeat(1, 1, self.duplicate_num)
         output = output.repeat(1, 1, self.duplicate_num)
         assert x.shape == output.shape, f"in: {x.shape} != out: {output.shape}"
@@ -220,14 +225,19 @@ class LitCVAE(pl.LightningModule):
         )
         # attr_reg_loss = reg_loss(z_tilde, rad_, len(data), gamma = 1.0, factor = 1.0)
 
+        self.loss = distance + (beta * kl)
+
         if self.wave_loss_coef is not None:
             # 波形のL1ロスを取る
             wave_loss = torch.nn.functional.l1_loss(x, output)
             self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True, batch_size=x.shape[0])
-            self.loss = distance + (beta * kl) + (self.wave_loss_coef * wave_loss)
+            self.loss = self.loss + (self.wave_loss_coef * wave_loss)
 
-        else:
-            self.loss = distance + (beta * kl)
+        if self.boundary_loss_coef is not None:
+            # Penalize non-zero boundaries on the original (non-duplicated) wavetable
+            boundary_loss = (base_output[:, :, 0].pow(2).mean() + base_output[:, :, -1].pow(2).mean())
+            self.log(f"{stage}_boundary_loss", boundary_loss, on_step=True, on_epoch=True, batch_size=base_output.shape[0])
+            self.loss = self.loss + (self.boundary_loss_coef * boundary_loss)
 
         self.log(f"{stage}_distance", distance, on_step=True, on_epoch=True, batch_size=x.shape[0])
         self.log("beta", beta, on_step=True, on_epoch=True, batch_size=x.shape[0])
