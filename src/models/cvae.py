@@ -257,10 +257,10 @@ class LitCVAE(pl.LightningModule):
         brightness = self._to_tensor(attrs["dco_brightness"])
         ritchness = self._to_tensor(attrs["dco_richness"])
         oddenergy = self._to_tensor(attrs["dco_oddenergy"])
-        hardness = self._to_tensor(attrs["hardness"])
+        zcr = self._to_tensor(attrs["dco_zcr"])
 
         # 3つの特徴量を結合
-        attrs = torch.stack([brightness, ritchness, oddenergy, hardness], dim=1)
+        attrs = torch.stack([brightness, ritchness, oddenergy, zcr], dim=1)
         return x, attrs
 
     def configure_optimizers(self):  # Optimizerと学習率(lr)設定
@@ -283,13 +283,13 @@ class Base(nn.Module):
         brightness = attrs[:, 0]
         ritchness = attrs[:, 1]
         oddenergy = attrs[:, 2]   #warmth --> not sure
-        hardness = attrs[:, 3]
+        zcr = attrs[:, 3]
 
         brightness_y = brightness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
         ritchness_y = ritchness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
         oddenergy_y = oddenergy.view(-1, 1, 1).expand(-1, 1, x.shape[2])
-        hardness_y = hardness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
-        x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y, hardness_y], dim=1)
+        zcr_y = zcr.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y, zcr_y], dim=1)
         # x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y], dim=1)
 
         return x
@@ -307,22 +307,23 @@ class Base(nn.Module):
         brightness = attrs[:, 0]  # (batch_size, 1)
         ritchness = attrs[:, 1]
         oddenergy = attrs[:, 2]
-        hardness = attrs[:, 3]
+        zcr = attrs[:, 3]
 
         # (batch_size, L)
         brightness = brightness.view(-1, 1).expand(x.shape[0], 1)
         ritchness = ritchness.view(-1, 1).expand(x.shape[0], 1)
         oddenergy = oddenergy.view(-1, 1).expand(x.shape[0], 1)
-        hardness = hardness.view(-1, 1).expand(x.shape[0], 1)
+        zcr = zcr.view(-1, 1).expand(x.shape[0], 1)         
         """
         # (batch_size, L)
         brightness = brightness.view(-1, 1).unsqueeze(1).expand(x.shape[0], 1, -1)
         ritchness = ritchness.view(-1, 1).unsqueeze(1).expand(x.shape[0], 1, -1)
         oddenergy = oddenergy.view(-1, 1).unsqueeze(1).expand(x.shape[0], 1, -1)
+        zcr = zcr.view(-1, 1).unsqueeze(1).expand(x.shape[0], 1, -1)
         """
 
         # (batch_size, 1, L)
-        x = torch.cat([x, brightness, ritchness, oddenergy, hardness], dim=1)
+        x = torch.cat([x, brightness, ritchness, oddenergy, zcr], dim=1)
 
         return x
 
