@@ -77,7 +77,7 @@ class EvalModelInit:
             wav = wav.to(device)
 
             if isinstance(attrs, dict):
-                keys = ["dco_brightness", "dco_richness", "dco_oddenergy", "hardness"]
+                keys = ["dco_brightness", "dco_richness", "dco_oddenergy", "dco_zcr"]
                 values = []
                 for key in keys:
                     if key not in attrs:
@@ -179,7 +179,7 @@ class Visualize(EvalModelInit):
         ncols: int = 5,
         latent_op=None,
         show: bool = False,
-        save_path: Path or str = None,
+        save_path: Path or str = None, # type: ignore
     ):
         # 訓練データの波形を見る
         fig, axs = plt.subplots(
@@ -225,7 +225,7 @@ class Visualize(EvalModelInit):
         ncols: int = 5,
         latent_op=None,
         show: bool = False,
-        save_path: Path or str = None,
+        save_path: Path or str = None, # type: ignore
     ):
         # 訓練データの波形を見る
         fig, axs = plt.subplots(
