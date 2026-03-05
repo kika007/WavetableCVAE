@@ -25,7 +25,7 @@ root = pyrootutils.setup_root(
 from src.models.cvae import LitCVAE
 from src.models.components.visualize import EvalModelInit
 
-CHECKPOINT_PATH = root / "ckpt/epoch=25929-step=1348360.ckpt"
+CHECKPOINT_PATH = root / "ckpt/epoch=29999-step=3120000.ckpt"
 PREDICT_DIR = root / "data/predict"
 PREDICT_LABEL_DIR = PREDICT_DIR / "labels"
 
@@ -75,10 +75,9 @@ def _load_attrs(sample_name: str) -> Dict[str, float]:
     return attrs
 
 
-def _normalize_hardness(value: float) -> float:
-    """Convert hardness from 0-100 scale to 0-1 (clamped)."""
-    normalized = float(value) / 100.0
-    return float(np.clip(normalized, 0.0, 1.0))
+def _clip_zcr(value: float) -> float:
+    """Clamp zero-crossing rate to 0-1 range."""
+    return float(np.clip(value, 0.0, 1.0))
 
 
 def _default_attr_values(sample_name: str) -> Tuple[float, float, float, float]:
@@ -87,7 +86,7 @@ def _default_attr_values(sample_name: str) -> Tuple[float, float, float, float]:
         float(attrs.get("dco_brightness", 0.5)),
         float(attrs.get("dco_richness", 0.5)),
         float(attrs.get("dco_oddenergy", 0.5)),
-        _normalize_hardness(attrs.get("hardness", 50.0)),
+        _clip_zcr(attrs.get("dco_zcr", 0.5)),
     )
 
 
@@ -151,21 +150,18 @@ def infer(
     dco_brightness: float,
     dco_richness: float,
     dco_oddenergy: float,
-    hardness: float,
+    dco_zcr: float,
 ) -> Tuple[Tuple[int, np.ndarray], plt.Figure]:
     # input wavetable
     waveform, _ = _load_wave(sample_name)
     batched_wav = waveform.unsqueeze(0)  # batch dim
-
-
-    hardness_for_model = float(np.clip(hardness, 0.0, 1.0)) * 100.0
 
     # Attributs
     attrs = {
         "dco_brightness": float(dco_brightness),
         "dco_richness": float(dco_richness),
         "dco_oddenergy": float(dco_oddenergy),
-        "hardness": hardness_for_model,
+        "dco_zcr": float(np.clip(dco_zcr, 0.0, 1.0)),
     }
 
     # New wavetable generation
@@ -175,11 +171,11 @@ def infer(
     
     # Wavetable -> tone
     output_waveform = wavetable_to_tone(
-    wavetable_np,
-    duration_sec=TONE_DURATION_SEC,
-    sample_rate=SAMPLE_RATE,
-    frequency_hz=440.0,  # Fixed output pitch
-)
+        wavetable_np,
+        duration_sec=TONE_DURATION_SEC,
+        sample_rate=SAMPLE_RATE,
+        frequency_hz=440.0,  # Fixed output pitch
+    )
 
     # Plot
     fig, ax = plt.subplots(figsize=(8, 3))
@@ -225,7 +221,7 @@ def build_interface() -> gr.Blocks:
             brightness_slider = gr.Slider(0.0, 1.0, value=default_attrs[0], step=0.01, label="Brightness")
             richness_slider = gr.Slider(0.0, 1.0, value=default_attrs[1], step=0.01, label="Richness")
             oddenergy_slider = gr.Slider(0.0, 1.0, value=default_attrs[2], step=0.01, label="Warmth")
-            hardness_slider = gr.Slider(0.0, 1.0, value=default_attrs[3], step=0.01, label="Hardness")
+            zcr_slider = gr.Slider(0.0, 1.0, value=default_attrs[3], step=0.01, label="Zero Crossing Rate")
 
         generate_button = gr.Button("Generate")
         audio_output = gr.Audio(label="Generated Audio", interactive=False)
@@ -236,7 +232,7 @@ def build_interface() -> gr.Blocks:
             brightness_slider,
             richness_slider,
             oddenergy_slider,
-            hardness_slider,
+            zcr_slider,
         ]
         outputs = [audio_output, plot_output]
 
@@ -245,7 +241,7 @@ def build_interface() -> gr.Blocks:
         sample_dropdown.change(
             fn=update_attributes,
             inputs=sample_dropdown,
-            outputs=[brightness_slider, richness_slider, oddenergy_slider, hardness_slider],
+            outputs=[brightness_slider, richness_slider, oddenergy_slider, zcr_slider],
         )
 
     return demo
