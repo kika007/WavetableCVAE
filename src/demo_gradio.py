@@ -80,13 +80,14 @@ def _clip_zcr(value: float) -> float:
     return float(np.clip(value, 0.0, 1.0))
 
 
-def _default_attr_values(sample_name: str) -> Tuple[float, float, float, float]:
+def _default_attr_values(sample_name: str) -> Tuple[float, float, float, float, float]:
     attrs = _load_attrs(sample_name)
     return (
-        float(attrs.get("dco_brightness", 0.5)),
-        float(attrs.get("dco_richness", 0.5)),
-        float(attrs.get("dco_oddenergy", 0.5)),
-        _clip_zcr(attrs.get("dco_zcr", 0.5)),
+        float(attrs.get("Brightness_norm", 0.0)),
+        float(attrs.get("Richness_norm", 0.0)),
+        float(attrs.get("Fullness_norm", 0.0)),
+        float(attrs.get("Symmetry_norm", 0.0)),
+        float(attrs.get("Undulation_norm", 0.0)),
     )
 
 
@@ -147,10 +148,11 @@ def wavetable_to_tone(
 
 def infer(
     sample_name: str,
-    dco_brightness: float,
-    dco_richness: float,
-    dco_oddenergy: float,
-    dco_zcr: float,
+    brightness_norm: float,
+    richness_norm: float,
+    fullness_norm: float,
+    symmetry_norm: float,
+    undulation_norm: float,
 ) -> Tuple[Tuple[int, np.ndarray], plt.Figure]:
     # input wavetable
     waveform, _ = _load_wave(sample_name)
@@ -158,10 +160,11 @@ def infer(
 
     # Attributs
     attrs = {
-        "dco_brightness": float(dco_brightness),
-        "dco_richness": float(dco_richness),
-        "dco_oddenergy": float(dco_oddenergy),
-        "dco_zcr": float(np.clip(dco_zcr, 0.0, 1.0)),
+        "Brightness_norm": float(brightness_norm),
+        "Richness_norm": float(richness_norm),
+        "Fullness_norm": float(fullness_norm),
+        "Symmetry_norm": float(symmetry_norm),
+        "Undulation_norm": float(undulation_norm),
     }
 
     # New wavetable generation
@@ -193,7 +196,7 @@ def infer(
 # update attribute sliders when sample changes
 # ---------------------------------------------------------------------
 
-def update_attributes(sample_name: str) -> Tuple[float, float, float, float]:
+def update_attributes(sample_name: str) -> Tuple[float, float, float, float, float]:
     return _default_attr_values(sample_name)
 
 
@@ -204,7 +207,7 @@ def update_attributes(sample_name: str) -> Tuple[float, float, float, float]:
 def build_interface() -> gr.Blocks:
     sample_names = _list_predict_waves()
     default_sample = sample_names[0] if sample_names else ""
-    default_attrs = _default_attr_values(default_sample) if default_sample else (0.5, 0.5, 0.5, 0.5)
+    default_attrs = _default_attr_values(default_sample) if default_sample else (0.0, 0.0, 0.0, 0.0, 0.0)
 
     with gr.Blocks(title="Wavetable CVAE Demo") as demo:
         gr.Markdown(
@@ -218,10 +221,11 @@ def build_interface() -> gr.Blocks:
                 value=default_sample,
                 label="Input wavetable",
             )
-            brightness_slider = gr.Slider(0.0, 1.0, value=default_attrs[0], step=0.01, label="Brightness")
-            richness_slider = gr.Slider(0.0, 1.0, value=default_attrs[1], step=0.01, label="Richness")
-            oddenergy_slider = gr.Slider(0.0, 1.0, value=default_attrs[2], step=0.01, label="Warmth")
-            zcr_slider = gr.Slider(0.0, 1.0, value=default_attrs[3], step=0.01, label="Zero Crossing Rate")
+            brightness_slider = gr.Slider(0.0, 1.0, value=default_attrs[0], step=0.01, label="Brightness_norm")
+            richness_slider = gr.Slider(0.0, 1.0, value=default_attrs[1], step=0.01, label="Richness_norm")
+            fullness_slider = gr.Slider(0.0, 2.0, value=default_attrs[2], step=0.01, label="Fullness_norm")
+            symmetry_slider = gr.Slider(-2.0, 2.0, value=default_attrs[3], step=0.01, label="Symmetry_norm")
+            undulation_slider = gr.Slider(-2.0, 2.0, value=default_attrs[4], step=0.01, label="Undulation_norm")
 
         generate_button = gr.Button("Generate")
         audio_output = gr.Audio(label="Generated Audio", interactive=False)
@@ -231,8 +235,9 @@ def build_interface() -> gr.Blocks:
             sample_dropdown,
             brightness_slider,
             richness_slider,
-            oddenergy_slider,
-            zcr_slider,
+            fullness_slider,
+            symmetry_slider,
+            undulation_slider,
         ]
         outputs = [audio_output, plot_output]
 
@@ -241,7 +246,7 @@ def build_interface() -> gr.Blocks:
         sample_dropdown.change(
             fn=update_attributes,
             inputs=sample_dropdown,
-            outputs=[brightness_slider, richness_slider, oddenergy_slider, zcr_slider],
+            outputs=[brightness_slider, richness_slider, fullness_slider, symmetry_slider, undulation_slider],
         )
 
     return demo

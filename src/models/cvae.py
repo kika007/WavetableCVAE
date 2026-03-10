@@ -254,13 +254,14 @@ class LitCVAE(pl.LightningModule):
     def _prepare_batch(self, batch: tuple) -> Tuple[torch.Tensor, torch.Tensor]:  # batch準備
         x, attrs = batch
 
-        brightness = self._to_tensor(attrs["dco_brightness"])
-        ritchness = self._to_tensor(attrs["dco_richness"])
-        oddenergy = self._to_tensor(attrs["dco_oddenergy"])
-        zcr = self._to_tensor(attrs["dco_zcr"])
+        brightness = self._to_tensor(attrs["Brightness_norm"])
+        ritchness = self._to_tensor(attrs["Richness_norm"])
+        fullness = self._to_tensor(attrs["Fullness_norm"])
+        symmetry = self._to_tensor(attrs["Symmetry_norm"])
+        udulation = self._to_tensor(attrs["Undulation_norm"])
 
         # 3つの特徴量を結合
-        attrs = torch.stack([brightness, ritchness, oddenergy, zcr], dim=1)
+        attrs = torch.stack([brightness, ritchness, fullness, symmetry, udulation], dim=1)
         return x, attrs
 
     def configure_optimizers(self):  # Optimizerと学習率(lr)設定
@@ -282,15 +283,16 @@ class Base(nn.Module):
 
         brightness = attrs[:, 0]
         ritchness = attrs[:, 1]
-        oddenergy = attrs[:, 2]   #warmth --> not sure
-        zcr = attrs[:, 3]
+        fullness = attrs[:, 2]
+        symmetry = attrs[:, 3]
+        undulation = attrs[:, 4]
 
         brightness_y = brightness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
         ritchness_y = ritchness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
-        oddenergy_y = oddenergy.view(-1, 1, 1).expand(-1, 1, x.shape[2])
-        zcr_y = zcr.view(-1, 1, 1).expand(-1, 1, x.shape[2])
-        x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y, zcr_y], dim=1)
-        # x = torch.cat([x, brightness_y, ritchness_y, oddenergy_y], dim=1)
+        fullness_y = fullness.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        symmetry_y = symmetry.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        undulation_y = undulation.view(-1, 1, 1).expand(-1, 1, x.shape[2])
+        x = torch.cat([x, brightness_y, ritchness_y, fullness_y, symmetry_y, undulation_y], dim=1)
 
         return x
 
@@ -306,24 +308,27 @@ class Base(nn.Module):
         """
         brightness = attrs[:, 0]  # (batch_size, 1)
         ritchness = attrs[:, 1]
-        oddenergy = attrs[:, 2]
-        zcr = attrs[:, 3]
+        fullness = attrs[:, 2]
+        symmetry = attrs[:, 3]
+        undulation = attrs[:, 4]
 
         # (batch_size, L)
         brightness = brightness.view(-1, 1).expand(x.shape[0], 1)
         ritchness = ritchness.view(-1, 1).expand(x.shape[0], 1)
-        oddenergy = oddenergy.view(-1, 1).expand(x.shape[0], 1)
-        zcr = zcr.view(-1, 1).expand(x.shape[0], 1)         
+        fullness = fullness.view(-1, 1).expand(x.shape[0], 1)
+        symmetry = symmetry.view(-1, 1).expand(x.shape[0], 1)
+        undulation = undulation.view(-1, 1).expand(x.shape[0], 1)         
         """
         # (batch_size, L)
         brightness = brightness.view(-1, 1).unsqueeze(1).expand(x.shape[0], 1, -1)
         ritchness = ritchness.view(-1, 1).unsqueeze(1).expand(x.shape[0], 1, -1)
-        oddenergy = oddenergy.view(-1, 1).unsqueeze(1).expand(x.shape[0], 1, -1)
-        zcr = zcr.view(-1, 1).unsqueeze(1).expand(x.shape[0], 1, -1)
+        fullness = fullness.view(-1, 1).unsqueeze(1).expand(x.shape[0], 1, -1)
+        symmetry = symmetry.view(-1, 1).unsqueeze(1).expand(x.shape[0], 1, -1)
+        undulation = undulation.view(-1, 1).unsqueeze(1).expand(x.shape[0], 1, -1)
         """
 
         # (batch_size, 1, L)
-        x = torch.cat([x, brightness, ritchness, oddenergy, zcr], dim=1)
+        x = torch.cat([x, brightness, ritchness, fullness, symmetry, undulation], dim=1)
 
         return x
 

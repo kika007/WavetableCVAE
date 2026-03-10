@@ -77,7 +77,7 @@ class EvalModelInit:
             wav = wav.to(device)
 
             if isinstance(attrs, dict):
-                keys = ["dco_brightness", "dco_richness", "dco_oddenergy", "dco_zcr"]
+                keys = ["Brightness_norm", "Richness_norm", "Fullness_norm", "Symmetry_norm", "Undulation_norm"]
                 values = []
                 for key in keys:
                     if key not in attrs:
@@ -278,6 +278,7 @@ class FeatureExatractorInit(EvalModelInit):
         # np.conj(): 共役複素数 (複素共役, 虚数部の符号を逆にした複素数) を返す
         spec_pow = spec_pow[0:Nh]
 
+        eps = 1e-12
         total = sum(spec_pow)
         if total == 0:
             brightness = -1
@@ -292,10 +293,6 @@ class FeatureExatractorInit(EvalModelInit):
             k = 7.5
             richness = np.log(spread * (np.exp(k) - 1) + 1) / k
 
-            zero_crossing_rate = np.where(np.diff(np.sign(single_cycle)))[0].shape[0] / waveform_length
-            k = 5.5
-            noiseness = np.log(zero_crossing_rate * (np.exp(k) - 1) + 1) / k
-
         # fullness
         hf = N / waveform_length
         hnumber = int(waveform_length / 2) - 1
@@ -306,7 +303,15 @@ class FeatureExatractorInit(EvalModelInit):
         else:
             fullness = 1 - odd_harmonics / all_harmonics
 
-        return brightness, richness, fullness, noiseness
+        # symmetry: imbalance between positive and negative amplitudes ([-1,1])
+        pos_energy = np.sum(np.clip(single_cycle, 0, None))
+        neg_energy = np.sum(np.clip(single_cycle, None, 0)) * -1
+        symmetry = (pos_energy - neg_energy) / (pos_energy + neg_energy + eps)
+
+        # undulation: variability of first difference
+        undulation = float(np.std(np.diff(single_cycle)))
+
+        return brightness, richness, fullness, symmetry, undulation
 
     def CondOrLatentOperate(
         self,
@@ -369,16 +374,18 @@ class FeatureExatractorInit(EvalModelInit):
         plt.legend((p1[0], p2[0]), ("traget label", "estimate label"), loc=2)
 
     def est_label_eval(self, wavetable: torch.Tensor, attrs: dict, label_name: str, dbFlg: bool = False):
-        bright, ritch, odd, zcr = self.dco_extractFeatures(wavetable, 15)
+        bright, ritch, fullness, symmetry, undulation = self.dco_extractFeatures(wavetable, 15)
 
-        if label_name == "dco_brightness":
+        if label_name == "Brightness_norm":
             est_data = bright
-        elif label_name == "dco_richness":
+        elif label_name == "Richness_norm":
             est_data = ritch
-        elif label_name == "dco_oddenergy":
-            est_data = odd
-        elif label_name == "dco_zcr":
-            est_data = zcr
+        elif label_name == "Fullness_norm":
+            est_data = fullness
+        elif label_name == "Symmetry_norm":
+            est_data = symmetry
+        elif label_name == "Undulation_norm":
+            est_data = undulation
         else:
             raise Exception("Error!")
 

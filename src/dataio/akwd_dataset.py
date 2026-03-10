@@ -23,9 +23,9 @@ class AKWDDataset(torch.utils.data.Dataset):
         self,
         root: str,
         download: bool = True,
-        align_to_zero: bool = True,
+        align_to_zero: bool = False,
         fix_boundary: bool = False,
-        remove_dc: bool = True,
+        remove_dc: bool = False,
     ):
         super().__init__()
         self.root = root
@@ -142,9 +142,10 @@ class AKWDDataset(torch.utils.data.Dataset):
             # この辺のパスの与え方は修正したい.良い方法を考える
             UNPACK_PATH = os.path.join(cwd, "data")
             DOWNLOAD_PATH = os.path.join(UNPACK_PATH, DOWNLOAD_NAME)
-            ID = "1Bpos6HJp6IHJYIkJ0rrXhydyeiA7gREO"  # ess_yeojohnson*DCO
+            ID = "13UhP_6tccMgPfv9-LF4zKeCGdrdPEgx8"  # new cleaned dataset + wavenet
 
             URL = "https://drive.google.com/uc?id=" + ID
+            
 
             # if os.path.exists(os.path.join(cwd, DOWNLOAD_NAME)):
             if os.path.exists(DOWNLOAD_PATH):

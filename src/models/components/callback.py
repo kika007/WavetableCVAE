@@ -42,10 +42,11 @@ class MyPrintingCallback(pl.callbacks.Callback):
             featureExatractorInit = FeatureExatractorInit(model)
 
             attrs_label = [
-                "dco_brightness",
-                "dco_richness",
-                "dco_oddenergy",
-                "dco_zcr",
+                "Brightness_norm",
+                "Richness_norm",
+                "Fullness_norm",
+                "Symmetry_norm",
+                "Undulation_norm",
             ]
 
             featureExatractorInit(
@@ -67,4 +68,3 @@ class MyPrintingCallback(pl.callbacks.Callback):
 
     def on_train_end(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
         print("Training is ending")
-

@@ -40,8 +40,8 @@ model:
   enc_lin_layer_dim: [512, 128, 32, 8]
   dec_lin_layer_dim: [8, 32, 128, 512]
 
-  enc_cond_num: 4 # number of condition label channel
-  dec_cond_num: 4
+  enc_cond_num: 5 # number of condition label channel
+  dec_cond_num: 5
   sample_points: 600 # number of sample points
   sample_rate: 44100
   lr: 1e-4
@@ -51,12 +51,12 @@ model:
   min_kl: 1e-4
   max_kl: 1e-1
   wave_loss_coef: null
-  boundary_loss_coef: 10
+  boundary_loss_coef: null
   cycle_num: 8
 
 datamodule:
   _target_: "src.dataio.akwd_datamodule.AWKDDataModule"
-  batch_size: 64
+  batch_size: 128
 
 logger:
   _target_: pytorch_lightning.loggers.wandb.WandbLogger
