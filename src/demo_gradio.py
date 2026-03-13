@@ -25,7 +25,7 @@ root = pyrootutils.setup_root(
 from src.models.cvae import LitCVAE
 from src.models.components.visualize import EvalModelInit
 
-CHECKPOINT_PATH = root / "ckpt/epoch=29999-step=3120000.ckpt"
+CHECKPOINT_PATH = root / "ckpt/epoch=29999-step=780000.ckpt"
 PREDICT_DIR = root / "data/predict"
 PREDICT_LABEL_DIR = PREDICT_DIR / "labels"
 
