@@ -20,11 +20,11 @@ root = pyrootutils.setup_root(
 
 DEFAULT_LABEL_DIR = root / "data/AKWF_44k1_600s" / "labels"
 DEFAULT_ATTRS: Sequence[str] = (
-    "dco_brightness",
-    "dco_richness",
-    "dco_oddenergy",
-    "dco_zcr",
-    "hardness",
+    "Brightness_norm",
+    "Richness_norm",
+    "Fullness_norm",
+    "Symmetry_norm",
+    "Undulation_norm",
 )
 
 
