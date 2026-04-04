@@ -1,19 +1,21 @@
-# WavetableCVAE
+# WavetableCVAE: From Labels to Waves
 
-<!-- img width="1030" alt="overview" src="https://github.com/tsugumasa320/WavetableCVAE/assets/35299183/a7a33304-c30e-4538-86d0-75f22ad910e2"-->
-https://github.com/tsugumasa320/WavetableCVAE/assets/35299183/4d20032b-a8cc-43d6-987e-6485e670cea8
+[cite_start]This repository presents a perceptually-driven approach to wavetable synthesis using a **Conditional Variational Autoencoder (CVAE)**. [cite_start]It enables intuitive timbre manipulation through high-level semantic descriptors.
 
-# Abstract
+## Project Overview
 
-WavetableCVAE" is an attempt to provide intuitive timbre control by generating wavetables conditionally with CVAE.
+[cite_start]This work is an extension and modernization of the original research by **Tsugumasa Yutani**(https://arxiv.org/pdf/2410.18628). [cite_start]While the core concept of generating single-cycle wavetables remains, this version introduces several key improvements in control dimensionality and technical stability.
 
-The code for the deep learning part is available here.
+### Original Foundation (by T. Yutani)
+* [cite_start]**Generative Framework**: Introduction of the CVAE architecture for wavetable synthesis.
+* [cite_start]**Semantic Labeling**: Conditioning the model on attributes like brightness, richness, and odd-energy.
 
-Plug-ins for DAW are available in [this repository](https://github.com/tsugumasa320/WavetableCVAE_Plugin/tree/main).
-
-Japanese paper [here](https://ipsj.ixsq.nii.ac.jp/ej/?action=pages_view_main&active_action=repository_view_main_item_detail&item_id=226379&item_no=1&page_id=13&block_id=8) 
-
-English paper [here](https://arxiv.org/abs/2410.18628)
+### New Extensions & Contributions (this version)
+* [cite_start]**Expanded Semantic Space**: Incorporated new morphological descriptors (Fullness, Undulation, and Symmetry) inspired by the Wavespace framework(https://arxiv.org/pdf/2407.19862v1) to allow for a richer representation of timbre.
+* [cite_start]**Model Modernization**: The implementation was upgraded to **PyTorch 2.2** and **PyTorch Lightning 2.2**, ensuring compatibility with modern CUDA-based GPUs and improving training stability.
+* [cite_start]**Modular Conditioning Architecture**: Redesigned the conditioning layers using the **Hydra framework**, allowing the model to handle a dynamic number of semantic attributes without manual architecture changes.
+* [cite_start]**Improved Signal Integrity**: Introduced a rigorous dataset cleaning procedure (DC offset removal, circular shift alignment, and edge ramping) to ensure smooth periodic boundaries and prevent audible clicks.
+* [cite_start]**Interactive Evaluation**: Prototyped a web-based interface using **Gradio** for real-time manipulation and instant audio feedback of generated wavetables.
 
 
 # Requirement
@@ -78,6 +80,8 @@ CPU and GPU switching is also automatically determined.
 
 "WavetableCVAE" is under [CC BY-NC 4.0 license](https://creativecommons.org/licenses/by-nc/4.0/deed.ja).
 
-# Acknowledgment
-This research was supported by the 12th Cybozu Labo Youth.
+
+
+
+
 
