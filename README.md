@@ -1,21 +1,21 @@
 # WavetableCVAE: From Labels to Waves
 
-[cite_start]This repository presents a perceptually-driven approach to wavetable synthesis using a **Conditional Variational Autoencoder (CVAE)**. [cite_start]It enables intuitive timbre manipulation through high-level semantic descriptors.
+This repository presents a perceptually-driven approach to wavetable synthesis using a **Conditional Variational Autoencoder (CVAE)**. It enables intuitive timbre manipulation through high-level semantic descriptors.
 
 ## Project Overview
 
-[cite_start]This work is an extension and modernization of the original research by **Tsugumasa Yutani**(https://arxiv.org/pdf/2410.18628). [cite_start]While the core concept of generating single-cycle wavetables remains, this version introduces several key improvements in control dimensionality and technical stability.
+This work is an extension and modernization of the original research by [**Tsugumasa Yutani**](https://arxiv.org/pdf/2410.18628). While the core concept of generating single-cycle wavetables remains, this version introduces several key improvements in control dimensionality and technical stability.
 
 ### Original Foundation (by T. Yutani)
-* [cite_start]**Generative Framework**: Introduction of the CVAE architecture for wavetable synthesis.
-* [cite_start]**Semantic Labeling**: Conditioning the model on attributes like brightness, richness, and odd-energy.
+* **Generative Framework**: Introduction of the CVAE architecture for wavetable synthesis.
+* **Semantic Labeling**: Conditioning the model on attributes like brightness, richness, and odd-energy.
 
 ### New Extensions & Contributions (this version)
-* [cite_start]**Expanded Semantic Space**: Incorporated new morphological descriptors (Fullness, Undulation, and Symmetry) inspired by the Wavespace framework(https://arxiv.org/pdf/2407.19862v1) to allow for a richer representation of timbre.
-* [cite_start]**Model Modernization**: The implementation was upgraded to **PyTorch 2.2** and **PyTorch Lightning 2.2**, ensuring compatibility with modern CUDA-based GPUs and improving training stability.
-* [cite_start]**Modular Conditioning Architecture**: Redesigned the conditioning layers using the **Hydra framework**, allowing the model to handle a dynamic number of semantic attributes without manual architecture changes.
-* [cite_start]**Improved Signal Integrity**: Introduced a rigorous dataset cleaning procedure (DC offset removal, circular shift alignment, and edge ramping) to ensure smooth periodic boundaries and prevent audible clicks.
-* [cite_start]**Interactive Evaluation**: Prototyped a web-based interface using **Gradio** for real-time manipulation and instant audio feedback of generated wavetables.
+* **Expanded Semantic Space**: Incorporated new morphological descriptors (Fullness, Undulation, and Symmetry) inspired by the [Wavespace framework](https://arxiv.org/pdf/2407.19862v1) to allow for a richer representation of timbre.
+* **Model Modernization**: The implementation was upgraded to **PyTorch 2.2** and **PyTorch Lightning 2.2**, ensuring compatibility with modern CUDA-based GPUs and improving training stability.
+* **Modular Conditioning Architecture**: Redesigned the conditioning layers using the **Hydra framework**, allowing the model to handle a dynamic number of semantic attributes without manual architecture changes.
+* **Improved Signal Integrity**: Introduced a rigorous dataset cleaning procedure (DC offset removal, circular shift alignment, and edge ramping) to ensure smooth periodic boundaries and prevent audible clicks.
+* **Interactive Evaluation**: Prototyped a web-based interface using **Gradio** for real-time manipulation and instant audio feedback of generated wavetables.
 
 
 # Requirement
