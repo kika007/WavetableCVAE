@@ -65,6 +65,19 @@ pip install -r requirements.txt
 python ./src/train.py
 ```
 
+### Gradio demo
+
+Interactive generation and audition via the web UI:
+
+1) Place your trained checkpoint in `ckpt/`.
+2) Launch the Gradio server:
+
+```bash
+python ./src/demo_gradio.py
+```
+
+The script loads the model and samples, starts a local Gradio server, and prints the URL (plus an optional `share` link) so you can tweak semantic sliders and listen to the generated tones.
+
 ### How to change settings
 
 By changing the settings in conf -> config.yaml,
@@ -79,8 +92,6 @@ CPU and GPU switching is also automatically determined.
 # License
 
 "WavetableCVAE" is under [CC BY-NC 4.0 license](https://creativecommons.org/licenses/by-nc/4.0/deed.ja).
-
-
 
 
 
