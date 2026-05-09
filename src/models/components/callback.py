@@ -42,11 +42,11 @@ class MyPrintingCallback(pl.callbacks.Callback):
             featureExatractorInit = FeatureExatractorInit(model)
 
             attrs_label = [
-                "Brightness_norm",
-                "Richness_norm",
-                "Fullness_norm",
-                "Symmetry_norm",
-                "Undulation_norm",
+                "brightness",
+                "roughness",
+                "fullness",
+                "warmth",
+                "sharpness",
             ]
 
             featureExatractorInit(

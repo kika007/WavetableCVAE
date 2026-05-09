@@ -24,17 +24,26 @@ class AWKDDataModule(pl.LightningDataModule):
         if predict_dir is not None:
             self.predict_dataset = akwd_dataset.AKWDDataset(root=predict_dir)
 
-        # ここは外部から与えられる様にするか要検討
-        NUM_TRAIN = 3328  # trainの数
-        NUM_VAL = 415  # valの数
-        NUM_TEST = 415  # testの数
+        # If the dataset size differs from the original expected count, split automatically.
+        dataset_len = len(self.dataset)
+        if dataset_len < 3:
+            raise ValueError(f"Dataset too small to split: {dataset_len}")
+
+        num_train = int(dataset_len * 0.8)
+        remaining = dataset_len - num_train
+        num_val = remaining // 2
+        num_test = dataset_len - num_train - num_val
+
+        print(
+            f"Dataset size: {dataset_len}, train={num_train}, val={num_val}, test={num_test}"
+        )
 
         (
             self.train_dataset,
             self.val_dataset,
             self.test_dataset,
-        ) = torch.utils.data.random_split(  # trainとvalを分ける
-            self.dataset, [NUM_TRAIN, NUM_VAL, NUM_TEST]
+        ) = torch.utils.data.random_split(
+            self.dataset, [num_train, num_val, num_test]
         )
 
         self.batch_size = batch_size

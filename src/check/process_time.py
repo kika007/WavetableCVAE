@@ -72,9 +72,11 @@ class process_time_calc(EvalModelInit):
 
             # dictの軽量化
             light_attrs = {}
-            light_attrs["dco_brightness"] = attrs["dco_brightness"]
-            light_attrs["dco_oddenergy"] = attrs["dco_oddenergy"]
-            light_attrs["dco_richness"] = attrs["dco_richness"]
+            light_attrs["brightness"] = attrs["brightness"]
+            light_attrs["roughness"] = attrs["roughness"]
+            light_attrs["fullness"] = attrs["fullness"]
+            light_attrs["warmth"] = attrs["warmth"]
+            light_attrs["sharpness"] = attrs["sharpness"]
 
             # process speed
             start = time.perf_counter()

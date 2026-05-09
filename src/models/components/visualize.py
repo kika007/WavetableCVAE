@@ -77,7 +77,7 @@ class EvalModelInit:
             wav = wav.to(device)
 
             if isinstance(attrs, dict):
-                keys = ["Brightness_norm", "Richness_norm", "Fullness_norm", "Symmetry_norm", "Undulation_norm"]
+                keys = ["brightness", "roughness", "fullness", "warmth", "sharpness"]
                 values = []
                 for key in keys:
                     if key not in attrs:
@@ -376,15 +376,15 @@ class FeatureExatractorInit(EvalModelInit):
     def est_label_eval(self, wavetable: torch.Tensor, attrs: dict, label_name: str, dbFlg: bool = False):
         bright, ritch, fullness, symmetry, undulation = self.dco_extractFeatures(wavetable, 15)
 
-        if label_name == "Brightness_norm":
+        if label_name == "brightness":
             est_data = bright
-        elif label_name == "Richness_norm":
+        elif label_name == "roughness":
             est_data = ritch
-        elif label_name == "Fullness_norm":
+        elif label_name == "fullness":
             est_data = fullness
-        elif label_name == "Symmetry_norm":
+        elif label_name == "warmth":
             est_data = symmetry
-        elif label_name == "Undulation_norm":
+        elif label_name == "sharpness":
             est_data = undulation
         else:
             raise Exception("Error!")
