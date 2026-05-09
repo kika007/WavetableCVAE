@@ -75,20 +75,34 @@ def _load_attrs(sample_name: str) -> Dict[str, float]:
     return attrs
 
 
-def _clip_zcr(value: float) -> float:
-    """Clamp zero-crossing rate to 0-1 range."""
-    return float(np.clip(value, 0.0, 1.0))
-
-
-def _default_attr_values(sample_name: str) -> Tuple[float, float, float, float, float]:
+def _default_attr_values(sample_name: str) -> Tuple[float, float, float, float]:
     attrs = _load_attrs(sample_name)
     return (
         float(attrs.get("Brightness_norm", 0.0)),
         float(attrs.get("Richness_norm", 0.0)),
         float(attrs.get("Fullness_norm", 0.0)),
-        float(attrs.get("Symmetry_norm", 0.0)),
         float(attrs.get("Undulation_norm", 0.0)),
     )
+
+
+# ---------------------------------------------------------------------
+# Anti-Aliasing Filter (FFT Band-limiting)
+# ---------------------------------------------------------------------
+
+def bandlimit_wavetable(wavetable: np.ndarray, frequency_hz: float, sample_rate: int) -> np.ndarray:
+    if len(wavetable) == 0:
+        return wavetable
+
+    nyquist = sample_rate / 2.0
+    max_harmonic = int(nyquist / frequency_hz)
+
+    spectrum = np.fft.rfft(wavetable)
+
+    if max_harmonic < len(spectrum):
+        spectrum[max_harmonic:] = 0.0
+
+    filtered_wavetable = np.fft.irfft(spectrum, n=len(wavetable))
+    return filtered_wavetable.astype(np.float32)
 
 
 # ---------------------------------------------------------------------
@@ -99,38 +113,27 @@ def wavetable_to_tone(
     wavetable: np.ndarray,
     duration_sec: float = TONE_DURATION_SEC,
     sample_rate: int = SAMPLE_RATE,
-    frequency_hz: float = 440.0,   # Target output frequency in Hz
+    frequency_hz: float = 440.0,
 ) -> np.ndarray:
-    # Flatten wavetable and ensure float32 type
+    
     wavetable = wavetable.flatten().astype(np.float32)
     num_samples = int(duration_sec * sample_rate)
 
-    # If wavetable is empty, return silence
     if len(wavetable) == 0:
         return np.zeros(num_samples, dtype=np.float32)
 
+    wavetable = bandlimit_wavetable(wavetable, frequency_hz, sample_rate)
+
     table_len = len(wavetable)
-
-    # Phase increment: how many wavetable samples we advance per output sample
-    # This determines the resulting pitch
     phase_increment = frequency_hz * table_len / sample_rate
-
-    # Precompute all phase values for speed (one per output sample)
     phase = np.arange(num_samples, dtype=np.float64) * phase_increment
 
-    # Integer part of phase (base index in wavetable)
     idx0 = np.floor(phase).astype(np.int64) % table_len
-
-    # Next index in the wavetable (wrap-around)
     idx1 = (idx0 + 1) % table_len
-
-    # Fractional part for linear interpolation
     frac = phase - np.floor(phase)
 
-    # Linear interpolation between wavetable[idx0] and wavetable[idx1]
     tone = (1.0 - frac) * wavetable[idx0] + frac * wavetable[idx1]
 
-    # Apply fade-in and fade-out (10 ms each) to avoid clicks
     fade_len = int(0.01 * sample_rate)
     if fade_len > 0 and fade_len * 2 < len(tone):
         fade_in = np.linspace(0.0, 1.0, fade_len)
@@ -141,9 +144,8 @@ def wavetable_to_tone(
     return tone.astype(np.float32)
 
 
-
 # ---------------------------------------------------------------------
-# Inference function: -> wavetable -> generated wavetable -> tone
+# Inference function
 # ---------------------------------------------------------------------
 
 def infer(
@@ -151,36 +153,33 @@ def infer(
     brightness_norm: float,
     richness_norm: float,
     fullness_norm: float,
-    symmetry_norm: float,
     undulation_norm: float,
+    frequency: float,
 ) -> Tuple[Tuple[int, np.ndarray], plt.Figure]:
-    # input wavetable
+    
     waveform, _ = _load_wave(sample_name)
-    batched_wav = waveform.unsqueeze(0)  # batch dim
+    batched_wav = waveform.unsqueeze(0)
 
-    # Attributs
+    # Symmetry_norm sme nastavili na fixnú hodnotu (0.0) alebo ju úplne vynechali, 
+    # podľa toho, čo model vyžaduje v slovníku attrs.
     attrs = {
         "Brightness_norm": float(brightness_norm),
         "Richness_norm": float(richness_norm),
         "Fullness_norm": float(fullness_norm),
-        "Symmetry_norm": float(symmetry_norm),
+        "Symmetry_norm": 0.0, 
         "Undulation_norm": float(undulation_norm),
     }
 
-    # New wavetable generation
     wavetable = evaluator.model_eval(batched_wav, attrs)
     wavetable_np = wavetable.squeeze().detach().cpu().numpy()
     
-    
-    # Wavetable -> tone
     output_waveform = wavetable_to_tone(
         wavetable_np,
         duration_sec=TONE_DURATION_SEC,
         sample_rate=SAMPLE_RATE,
-        frequency_hz=440.0,  # Fixed output pitch
+        frequency_hz=frequency,
     )
 
-    # Plot
     fig, ax = plt.subplots(figsize=(8, 3))
     sample_axis = np.arange(wavetable_np.size)
     ax.plot(sample_axis, wavetable_np)
@@ -193,10 +192,10 @@ def infer(
 
 
 # ---------------------------------------------------------------------
-# update attribute sliders when sample changes
+# update attribute sliders
 # ---------------------------------------------------------------------
 
-def update_attributes(sample_name: str) -> Tuple[float, float, float, float, float]:
+def update_attributes(sample_name: str) -> Tuple[float, float, float, float]:
     return _default_attr_values(sample_name)
 
 
@@ -204,40 +203,50 @@ def update_attributes(sample_name: str) -> Tuple[float, float, float, float, flo
 # Gradio interface
 # ---------------------------------------------------------------------
 
+css = """
+.no-value-slider input[type="number"], .no-value-slider .value {
+    display: none !important;
+}
+"""
+
 def build_interface() -> gr.Blocks:
     sample_names = _list_predict_waves()
     default_sample = sample_names[0] if sample_names else ""
-    default_attrs = _default_attr_values(default_sample) if default_sample else (0.0, 0.0, 0.0, 0.0, 0.0)
+    default_attrs = _default_attr_values(default_sample) if default_sample else (0.0, 0.0, 0.0, 0.0)
 
-    with gr.Blocks(title="Wavetable CVAE Demo") as demo:
+    with gr.Blocks(title="Wavetable CVAE Demo", css=css) as demo:
         gr.Markdown(
             "# Wavetable CVAE Demo\n"
-            "Select a wavetable example and tweak its conditioning attributes to generate a new tone."
         )
 
         with gr.Row():
-            sample_dropdown = gr.Dropdown(
-                choices=sample_names,
-                value=default_sample,
-                label="Input wavetable",
-            )
-            brightness_slider = gr.Slider(0.0, 1.0, value=default_attrs[0], step=0.01, label="Brightness_norm")
-            richness_slider = gr.Slider(0.0, 1.0, value=default_attrs[1], step=0.01, label="Richness_norm")
-            fullness_slider = gr.Slider(0.0, 2.0, value=default_attrs[2], step=0.01, label="Fullness_norm")
-            symmetry_slider = gr.Slider(-2.0, 2.0, value=default_attrs[3], step=0.01, label="Symmetry_norm")
-            undulation_slider = gr.Slider(-2.0, 2.0, value=default_attrs[4], step=0.01, label="Undulation_norm")
+            with gr.Column():
+                sample_dropdown = gr.Dropdown(
+                    choices=sample_names,
+                    value=default_sample,
+                    label="Input wavetable",
+                )
+                freq_slider = gr.Slider(55.0, 1760.0, value=440.0, step=1.0, label="Frekvencia (Hz)")
+            
+            with gr.Column():
+                brightness_slider = gr.Slider(-2.0, 2.0, value=default_attrs[0], step=0.01, label="Brightness", elem_classes="no-value-slider")
+                richness_slider = gr.Slider(-2.0, 2.0, value=default_attrs[1], step=0.01, label="Richness", elem_classes="no-value-slider")
+                fullness_slider = gr.Slider(-2.0, 2.0, value=default_attrs[2], step=0.01, label="Fullness", elem_classes="no-value-slider")
+                undulation_slider = gr.Slider(-2.0, 2.0, value=default_attrs[3], step=0.01, label="Undulation", elem_classes="no-value-slider")
 
-        generate_button = gr.Button("Generate")
-        audio_output = gr.Audio(label="Generated Audio", interactive=False)
-        plot_output = gr.Plot(label="Waveform")
+        generate_button = gr.Button("Generate", variant="primary")
+        
+        with gr.Row():
+            audio_output = gr.Audio(label="Generated Audio", interactive=False)
+            plot_output = gr.Plot(label="Waveform")
 
         inputs = [
             sample_dropdown,
             brightness_slider,
             richness_slider,
             fullness_slider,
-            symmetry_slider,
             undulation_slider,
+            freq_slider,
         ]
         outputs = [audio_output, plot_output]
 
@@ -246,7 +255,7 @@ def build_interface() -> gr.Blocks:
         sample_dropdown.change(
             fn=update_attributes,
             inputs=sample_dropdown,
-            outputs=[brightness_slider, richness_slider, fullness_slider, symmetry_slider, undulation_slider],
+            outputs=[brightness_slider, richness_slider, fullness_slider, undulation_slider],
         )
 
     return demo
