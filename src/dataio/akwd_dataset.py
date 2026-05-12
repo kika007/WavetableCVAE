@@ -80,9 +80,10 @@ class AKWDDataset(torch.utils.data.Dataset):
             # この辺のパスの与え方は修正したい.良い方法を考える
             UNPACK_PATH = os.path.join(cwd, "data")
             DOWNLOAD_PATH = os.path.join(UNPACK_PATH, DOWNLOAD_NAME)
-            ID = "1nE84q5Ee4X1yESSmhgHVUPXzDLTuEvXa"  # new cleaned dataset + wavenet
+            ID = "1Wg3sR9LTw7-jLu2J1nGiYp9vrULIABoL"  # new cleaned dataset + wavenet
 
             URL = "https://drive.google.com/uc?id=" + ID
+            
             
 
             # if os.path.exists(os.path.join(cwd, DOWNLOAD_NAME)):
