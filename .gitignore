@@ -9,6 +9,7 @@ output/
 .history/
 __pycache__/
 ckpt/
+torchscript/
 
 # Tsugumasa
 .zip
@@ -26,7 +27,6 @@ outputs/
 log/
 WavetableCVAE/
 __MACOSX
-
 *.out
 nohup.out
 
