@@ -228,13 +228,11 @@ class LitCVAE(pl.LightningModule):
         self.loss = distance + (beta * kl)
 
         if self.wave_loss_coef is not None:
-            # 波形のL1ロスを取る
             wave_loss = torch.nn.functional.l1_loss(x, output)
             self.log(f"{stage}_wave_loss", wave_loss, on_step=True, on_epoch=True, batch_size=x.shape[0])
             self.loss = self.loss + (self.wave_loss_coef * wave_loss)
 
         if self.boundary_loss_coef is not None:
-            # Penalize non-zero boundaries on the original (non-duplicated) wavetable
             boundary_loss = (base_output[:, :, 0].pow(2).mean() + base_output[:, :, -1].pow(2).mean())
             self.log(f"{stage}_boundary_loss", boundary_loss, on_step=True, on_epoch=True, batch_size=base_output.shape[0])
             self.loss = self.loss + (self.boundary_loss_coef * boundary_loss)

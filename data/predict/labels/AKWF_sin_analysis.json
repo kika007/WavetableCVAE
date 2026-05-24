@@ -1,13 +1,13 @@
 {
     "name": "AKWF_sin",
     "sample_rate": 44100,
-    "brightness": -1.602015146841307,
-    "fullness": -1.3377617371267188,
-    "roughness": -3.0989769578316504,
-    "warmth": -0.7515100999916832,
-    "sharpness": -1.631382375142741,
-    "boominess": 2.2141465982196,
-    "richness": -4.778367256769068,
-    "dissonance": -1.9673490032164958,
-    "hardness": -1.9426585927542341
+    "brightness": 0.0,
+    "fullness": 8.326672684688674e-16,
+    "roughness": 0.0,
+    "warmth": 0.3376842749903515,
+    "sharpness": 0.0,
+    "boominess": 0.9822796823752771,
+    "richness": 0.0,
+    "dissonance": 0.015475702279208692,
+    "hardness": 0.1937124500420057
 }

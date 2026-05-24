@@ -25,12 +25,12 @@ root = pyrootutils.setup_root(
 from src.models.cvae import LitCVAE
 from src.models.components.visualize import EvalModelInit
 
-CHECKPOINT_PATH = root / "ckpt/epoch=29999-step=780000.ckpt"
+CHECKPOINT_PATH = root / "ckpt/epoch=29999-step=2370000.ckpt"
 PREDICT_DIR = root / "data/predict"
 PREDICT_LABEL_DIR = PREDICT_DIR / "labels"
 
 SAMPLE_RATE = 44100
-TONE_DURATION_SEC = 1.0  # duration of a tone generated from wavetable
+TONE_DURATION_SEC = 5.0  # duration of a tone generated from wavetable
 
 
 # ---------------------------------------------------------------------
@@ -75,13 +75,14 @@ def _load_attrs(sample_name: str) -> Dict[str, float]:
     return attrs
 
 
-def _default_attr_values(sample_name: str) -> Tuple[float, float, float, float]:
+def _default_attr_values(sample_name: str) -> Tuple[float, float, float, float, float]:
     attrs = _load_attrs(sample_name)
     return (
-        float(attrs.get("Brightness_norm", 0.0)),
-        float(attrs.get("Richness_norm", 0.0)),
-        float(attrs.get("Fullness_norm", 0.0)),
-        float(attrs.get("Undulation_norm", 0.0)),
+        float(attrs.get("brightness", 0.0)),
+        float(attrs.get("roughness", 0.0)),
+        float(attrs.get("fullness", 0.0)),
+        float(attrs.get("warmth", 0.0)),
+        float(attrs.get("sharpness", 0.0)),
     )
 
 
@@ -151,27 +152,32 @@ def wavetable_to_tone(
 def infer(
     sample_name: str,
     brightness_norm: float,
-    richness_norm: float,
+    roughness_norm: float,
     fullness_norm: float,
-    undulation_norm: float,
+    warmth_norm: float,
+    sharpness_norm: float,
     frequency: float,
 ) -> Tuple[Tuple[int, np.ndarray], plt.Figure]:
     
     waveform, _ = _load_wave(sample_name)
     batched_wav = waveform.unsqueeze(0)
 
-    # Symmetry_norm sme nastavili na fixnú hodnotu (0.0) alebo ju úplne vynechali, 
-    # podľa toho, čo model vyžaduje v slovníku attrs.
     attrs = {
-        "Brightness_norm": float(brightness_norm),
-        "Richness_norm": float(richness_norm),
-        "Fullness_norm": float(fullness_norm),
-        "Symmetry_norm": 0.0, 
-        "Undulation_norm": float(undulation_norm),
+        "brightness": float(brightness_norm),
+        "roughness": float(roughness_norm),
+        "fullness": float(fullness_norm),
+        "warmth": float(warmth_norm),
+        "sharpness": float(sharpness_norm),
     }
 
     wavetable = evaluator.model_eval(batched_wav, attrs)
     wavetable_np = wavetable.squeeze().detach().cpu().numpy()
+    
+    # Remove DC offset and normalize
+    wavetable_np = wavetable_np - np.mean(wavetable_np)
+    max_val = np.max(np.abs(wavetable_np))
+    if max_val > 0:
+        wavetable_np = wavetable_np / max_val
     
     output_waveform = wavetable_to_tone(
         wavetable_np,
@@ -179,6 +185,12 @@ def infer(
         sample_rate=SAMPLE_RATE,
         frequency_hz=frequency,
     )
+
+    # Remove DC offset and normalize output waveform
+    output_waveform = output_waveform - np.mean(output_waveform)
+    max_val = np.max(np.abs(output_waveform))
+    if max_val > 0:
+        output_waveform = output_waveform / max_val
 
     fig, ax = plt.subplots(figsize=(8, 3))
     sample_axis = np.arange(wavetable_np.size)
@@ -195,7 +207,7 @@ def infer(
 # update attribute sliders
 # ---------------------------------------------------------------------
 
-def update_attributes(sample_name: str) -> Tuple[float, float, float, float]:
+def update_attributes(sample_name: str) -> Tuple[float, float, float, float, float]:
     return _default_attr_values(sample_name)
 
 
@@ -212,7 +224,7 @@ css = """
 def build_interface() -> gr.Blocks:
     sample_names = _list_predict_waves()
     default_sample = sample_names[0] if sample_names else ""
-    default_attrs = _default_attr_values(default_sample) if default_sample else (0.0, 0.0, 0.0, 0.0)
+    default_attrs = _default_attr_values(default_sample) if default_sample else (0.0, 0.0, 0.0, 0.0, 0.0)
 
     with gr.Blocks(title="Wavetable CVAE Demo", css=css) as demo:
         gr.Markdown(
@@ -226,13 +238,14 @@ def build_interface() -> gr.Blocks:
                     value=default_sample,
                     label="Input wavetable",
                 )
-                freq_slider = gr.Slider(55.0, 1760.0, value=440.0, step=1.0, label="Frekvencia (Hz)")
+                freq_slider = gr.Slider(55.0, 1760.0, value=440.0, step=1.0, label="Frequency (Hz)")
             
             with gr.Column():
-                brightness_slider = gr.Slider(-2.0, 2.0, value=default_attrs[0], step=0.01, label="Brightness", elem_classes="no-value-slider")
-                richness_slider = gr.Slider(-2.0, 2.0, value=default_attrs[1], step=0.01, label="Richness", elem_classes="no-value-slider")
-                fullness_slider = gr.Slider(-2.0, 2.0, value=default_attrs[2], step=0.01, label="Fullness", elem_classes="no-value-slider")
-                undulation_slider = gr.Slider(-2.0, 2.0, value=default_attrs[3], step=0.01, label="Undulation", elem_classes="no-value-slider")
+                brightness_slider = gr.Slider(0.0, 1.0, value=default_attrs[0], step=0.01, label="Brightness", elem_classes="no-value-slider")
+                roughness_slider = gr.Slider(0.0, 1.0, value=default_attrs[1], step=0.01, label="Roughness", elem_classes="no-value-slider")
+                fullness_slider = gr.Slider(0.0, 1.0, value=default_attrs[2], step=0.01, label="Fullness", elem_classes="no-value-slider")
+                warmth_slider = gr.Slider(0.0, 1.0, value=default_attrs[3], step=0.01, label="Warmth", elem_classes="no-value-slider")
+                sharpness_slider = gr.Slider(0.0, 1.0, value=default_attrs[4], step=0.01, label="Sharpness", elem_classes="no-value-slider")
 
         generate_button = gr.Button("Generate", variant="primary")
         
@@ -243,9 +256,10 @@ def build_interface() -> gr.Blocks:
         inputs = [
             sample_dropdown,
             brightness_slider,
-            richness_slider,
+            roughness_slider,
             fullness_slider,
-            undulation_slider,
+            warmth_slider,
+            sharpness_slider,
             freq_slider,
         ]
         outputs = [audio_output, plot_output]
@@ -255,7 +269,7 @@ def build_interface() -> gr.Blocks:
         sample_dropdown.change(
             fn=update_attributes,
             inputs=sample_dropdown,
-            outputs=[brightness_slider, richness_slider, fullness_slider, undulation_slider],
+            outputs=[brightness_slider, roughness_slider, fullness_slider, warmth_slider, sharpness_slider],
         )
 
     return demo
